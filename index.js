@@ -209,8 +209,15 @@ async function run() {
 
     app.post("/payments", verifyJWT, async (req, res) => {
       const payment = req.body;
-      const result = await paymentCollection.insertOne(payment);
-      res.send(result);
+      const insertResult = await paymentCollection.insertOne(payment);
+
+      // delete all the items from cart whose id matches cart item id
+      const query = {
+        _id: { $in: payment.cartItems.map((id) => new ObjectId(id)) },
+      };
+      const deleteResult = await cartCollection.deleteMany(query);
+
+      res.send({ insertResult, deleteResult });
     });
 
     // Send a ping to confirm a successful connection
