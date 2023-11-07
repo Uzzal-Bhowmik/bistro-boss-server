@@ -57,6 +57,9 @@ async function run() {
       .db("bistroRestaurantDB")
       .collection("reviews");
     const cartCollection = client.db("bistroRestaurantDB").collection("cart");
+    const paymentCollection = client
+      .db("bistroRestaurantDB")
+      .collection("payments");
 
     // verifyAdmin middleware
     const verifyAdmin = async (req, res, next) => {
@@ -135,22 +138,6 @@ async function run() {
       res.send(result);
     });
 
-    // PAYMENT RELATED API
-    app.post("/create-payment-intent", async (req, res) => {
-      const price = req.body;
-      const amount = price * 100; // to convert price into cent(poisa)
-
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: amount,
-        currency: "usd",
-        payment_method_types: ["card"],
-      });
-
-      res.send({
-        clientSecret: paymentIntent.client_secret,
-      });
-    });
-
     // user related api
     // security layers for admin apis
     // 0. hide admin routes only to admin and user routes to users using isAdmin ?
@@ -201,6 +188,28 @@ async function run() {
       };
 
       const result = await userCollection.updateOne(filter, updatedUser);
+      res.send(result);
+    });
+
+    // PAYMENT RELATED API
+    app.post("/create-payment-intent", verifyJWT, async (req, res) => {
+      const price = req.body.totalPrice;
+      const amount = price * 100; // to convert price into cent(poisa)
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+
+    app.post("/payments", verifyJWT, async (req, res) => {
+      const payment = req.body;
+      const result = await paymentCollection.insertOne(payment);
       res.send(result);
     });
 
