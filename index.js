@@ -4,6 +4,7 @@ require("dotenv").config();
 const app = express();
 const port = process.env.PORT || 5000;
 const jwt = require("jsonwebtoken");
+const stripe = require("stripe")(process.env.PAYMENT_GATEWAY_SECRET_KEY);
 
 // middleware
 app.use(cors());
@@ -86,6 +87,18 @@ async function run() {
       res.send(result);
     });
 
+    app.post("/menu", verifyJWT, verifyAdmin, async (req, res) => {
+      const newItem = req.body;
+      const result = await menuCollection.insertOne(newItem);
+      res.send(result);
+    });
+
+    app.delete("/menu/:id", verifyJWT, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const result = await menuCollection.deleteOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
+
     // review related api
     app.get("/reviews", async (req, res) => {
       const result = await reviewCollection.find().toArray();
@@ -120,6 +133,22 @@ async function run() {
       const id = req.params.id;
       const result = await cartCollection.deleteOne({ _id: new ObjectId(id) });
       res.send(result);
+    });
+
+    // PAYMENT RELATED API
+    app.post("/create-payment-intent", async (req, res) => {
+      const price = req.body;
+      const amount = price * 100; // to convert price into cent(poisa)
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
     });
 
     // user related api
