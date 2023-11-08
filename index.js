@@ -167,7 +167,6 @@ async function run() {
     app.get("/users/admin/:email", verifyJWT, async (req, res) => {
       const userEmail = req.params.email;
       const user = await userCollection.findOne({ email: userEmail });
-      console.log(req.decoded);
 
       if (req.decoded.email !== userEmail) {
         return res.send({ isAdmin: false });
@@ -178,7 +177,6 @@ async function run() {
 
     app.patch("/users/admin/:id", async (req, res) => {
       const id = req.params.id;
-      console.log(id);
       const filter = { _id: new ObjectId(id) };
 
       const updatedUser = {
@@ -239,6 +237,46 @@ async function run() {
       const orders = await paymentCollection.estimatedDocumentCount();
 
       res.send({ revenue, users, products, orders });
+    });
+
+    // ORDER STATS
+    app.get("/order-stats", async (req, res) => {
+      const result = await paymentCollection
+        .aggregate([
+          {
+            $unwind: "$menuItems",
+          },
+          {
+            $lookup: {
+              from: "menu",
+              localField: "menuItems",
+              foreignField: "_id",
+              as: "orderedMenuItems",
+            },
+          },
+          {
+            $unwind: "$orderedMenuItems",
+          },
+          {
+            $group: {
+              _id: "$orderedMenuItems.category",
+              totalQuantity: { $sum: 1 },
+              totalPrice: { $sum: "$orderedMenuItems.price" },
+            },
+          },
+          {
+            $project: {
+              category: "$_id",
+              totalQuantity: 1,
+              totalPrice: 1,
+              _id: 0,
+            },
+          },
+        ])
+        .toArray();
+      console.log(result);
+
+      res.json(result);
     });
 
     // Send a ping to confirm a successful connection
