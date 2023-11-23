@@ -175,6 +175,7 @@ async function run() {
       res.send({ isAdmin: user?.role === "admin" });
     });
 
+    // set admin role to user
     app.patch("/users/admin/:id", async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
@@ -217,6 +218,8 @@ async function run() {
 
       res.send({ insertResult, deleteResult });
     });
+
+    // --------- PAYMENT RELATED API END -------------------------
 
     // ADMIN STATS
     app.get("/admin-stats", verifyJWT, verifyAdmin, async (req, res) => {
@@ -274,7 +277,6 @@ async function run() {
           },
         ])
         .toArray();
-      console.log(result);
 
       res.json(result);
     });
